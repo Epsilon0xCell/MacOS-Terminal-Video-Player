@@ -26,6 +26,9 @@ public:
     explicit VideoPlayer(std::string path);
     ~VideoPlayer();
 
+    // I delete the copy operations because the three FFmpeg pointers
+    // below are owned, not shared. A copied player would free the same
+    // contexts twice in its destructor.
     VideoPlayer(const VideoPlayer &) = delete;
     VideoPlayer &operator=(const VideoPlayer &) = delete;
 
@@ -38,6 +41,9 @@ public:
     // Returns the number of frames rendered, or -1 on error (`error` set).
     int play(int cols, int rows, RenderMode mode, int max_frames, std::string &error);
 
+    // Both size getters return 0 before open() succeeds. main() only
+    // reads them after a successful play, but I would rather hand back a
+    // plain zero than dereference a codec context that does not exist.
     int width() const { return codec_ctx_ ? codec_ctx_->width : 0; }
     int height() const { return codec_ctx_ ? codec_ctx_->height : 0; }
     double duration_seconds() const;

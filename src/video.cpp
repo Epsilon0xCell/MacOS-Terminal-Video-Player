@@ -20,6 +20,9 @@ void request_stop(int) { g_stop_requested = 1; }
 namespace {
 
 std::string av_error(int errnum) {
+    // av_strerror needs a caller owned buffer and can itself fail on an
+    // error code it does not know, so the fallback below names the raw
+    // number instead of returning an empty message.
     char buf[AV_ERROR_MAX_STRING_SIZE] = {0};
     if (av_strerror(errnum, buf, sizeof(buf)) == 0) return std::string(buf);
     return "unknown FFmpeg error " + std::to_string(errnum);
@@ -36,6 +39,12 @@ void render_color(const AVFrame *frame, int w, int h, std::string &out) {
     const int stride = frame->linesize[0];
     char esc[64];
     for (int y = 0; y + 1 < h; y += 2) {
+        // last_fg and last_bg restart on every row because the row ends
+        // with a full color reset. Carrying them across rows would skip an
+        // escape the reset already cancelled and the row would start in
+        // the wrong colors. Suppressing repeats inside a row is the win
+        // here: flat areas of a frame would otherwise emit two color
+        // sequences per cell.
         int last_fg = -1, last_bg = -1;
         for (int x = 0; x < w; ++x) {
             const uint8_t *top = data + y * stride + x * 3;
@@ -59,6 +68,9 @@ void render_color(const AVFrame *frame, int w, int h, std::string &out) {
 
 // Render a GRAY8 frame of size w x h (h is even): each character is the
 // average brightness of a vertical pixel pair, mapped onto the ASCII ramp.
+// Both renderers step two source rows at a time and drop a final odd
+// row. That is safe only because play() always scales to rows * 2, an
+// even height, so no caller can hand them an odd h through play().
 void render_ascii(const AVFrame *frame, int w, int h, std::string &out) {
     out += "\033[H";
     const uint8_t *data = frame->data[0];
@@ -80,6 +92,10 @@ void render_ascii(const AVFrame *frame, int w, int h, std::string &out) {
 VideoPlayer::VideoPlayer(std::string path) : path_(std::move(path)) {}
 
 VideoPlayer::~VideoPlayer() {
+    // Free order matters to me here: the scaler was built from the codec
+    // context's format, and the format context owns the stream data the
+    // codec parameters came from, so I tear them down in reverse order
+    // of how open() and play() built them.
     if (sws_ctx_) sws_freeContext(sws_ctx_);
     if (codec_ctx_) avcodec_free_context(&codec_ctx_);
     if (fmt_ctx_) avformat_close_input(&fmt_ctx_);
@@ -96,6 +112,9 @@ bool VideoPlayer::open(std::string &error) {
         error = "cannot read stream info: " + av_error(ret);
         return false;
     }
+    // I let FFmpeg pick the video stream instead of taking stream 0.
+    // Plenty of files put an audio or subtitle stream first, and this
+    // player ignores audio entirely by design.
     const AVCodec *decoder = nullptr;
     video_stream_ = av_find_best_stream(fmt_ctx_, AVMEDIA_TYPE_VIDEO, -1, -1, &decoder, 0);
     if (video_stream_ < 0 || decoder == nullptr) {
@@ -122,6 +141,9 @@ bool VideoPlayer::open(std::string &error) {
 }
 
 double VideoPlayer::duration_seconds() const {
+    // Some containers carry no duration. I report 0 rather than letting
+    // the AV_NOPTS_VALUE sentinel through, where it would print as a
+    // huge negative number of seconds in main().
     if (!fmt_ctx_ || fmt_ctx_->duration == AV_NOPTS_VALUE) return 0.0;
     return static_cast<double>(fmt_ctx_->duration) / AV_TIME_BASE;
 }
@@ -159,6 +181,8 @@ int VideoPlayer::play(int cols, int rows, RenderMode mode, int max_frames,
     scaled->height = px_h;
     // Buffer owned by the frame (av_frame_free releases it). Do not free
     // scaled->data manually: sws_scale_frame manages its own references.
+    // The 32 byte alignment is for the scaler's vector paths; an
+    // unaligned buffer can fail or fall back on some builds.
     int ret = av_frame_get_buffer(scaled, 32);
     if (ret < 0) {
         error = "cannot allocate scaled frame: " + av_error(ret);
@@ -179,6 +203,11 @@ int VideoPlayer::play(int cols, int rows, RenderMode mode, int max_frames,
     const AVRational tb = stream->time_base;
     const double fps = av_q2d(av_guess_frame_rate(fmt_ctx_, stream, nullptr));
 
+    // I build each frame in one string and write it in a single fputs so
+    // a slow terminal never shows a half drawn frame. The reserve is a
+    // rough floor, not a promise: a noisy frame with a color change in
+    // every cell outgrows it and the string reallocates, which is rare
+    // enough that I accept it.
     std::string out;
     out.reserve(static_cast<size_t>(px_w) * px_h * 4);
     std::printf("\033[?25l");  // hide cursor
@@ -186,6 +215,9 @@ int VideoPlayer::play(int cols, int rows, RenderMode mode, int max_frames,
 
     // Stop cleanly on Ctrl+C or SIGTERM so the restore sequence below
     // (colors reset, cursor shown) always runs.
+    // I clear the flag before installing my handlers, not after: if a
+    // previous play() call in the same process was stopped, a leftover 1
+    // would make this run quit before its first frame.
     g_stop_requested = 0;
     struct sigaction sa {};
     sa.sa_handler = request_stop;
@@ -197,6 +229,8 @@ int VideoPlayer::play(int cols, int rows, RenderMode mode, int max_frames,
     int rendered = 0;
     bool done = false;
     bool flushed = false;
+    // t0 starts before the first decode, so time spent decoding counts
+    // against the pacing budget instead of being added on top of it.
     auto t0 = std::chrono::steady_clock::now();
     int64_t first_pts = AV_NOPTS_VALUE;
 
@@ -205,9 +239,17 @@ int VideoPlayer::play(int cols, int rows, RenderMode mode, int max_frames,
         int64_t pts = f->best_effort_timestamp;
         double target_s;
         if (pts != AV_NOPTS_VALUE) {
+            // I anchor on the first frame's timestamp instead of assuming
+            // the stream starts at zero. Files cut from a longer recording
+            // can start minutes in, and without this subtraction the first
+            // frame would sleep for that whole offset.
             if (first_pts == AV_NOPTS_VALUE) first_pts = pts;
             target_s = static_cast<double>(pts - first_pts) * av_q2d(tb);
         } else if (fps > 0) {
+            // No timestamp at all: I pace by frames already shown. Using
+            // rendered rather than a decode counter keeps a frame the
+            // decoder produced early from pulling every later frame
+            // forward with it.
             target_s = rendered / fps;
         } else {
             target_s = 0.0;
@@ -244,6 +286,11 @@ int VideoPlayer::play(int cols, int rows, RenderMode mode, int max_frames,
     while (!done) {
         ret = av_read_frame(fmt_ctx_, packet);
         if (ret == AVERROR_EOF) {
+            // End of file is not end of pictures. A decoder with B-frames
+            // can still be holding finished frames, so I send the null
+            // flush packet once and keep receiving until it says EOF too.
+            // The flushed flag stops me sending that null packet again on
+            // every pass through this branch.
             if (!flushed) {
                 avcodec_send_packet(codec_ctx_, nullptr);  // flush decoder
                 flushed = true;
@@ -269,6 +316,9 @@ int VideoPlayer::play(int cols, int rows, RenderMode mode, int max_frames,
             continue;
         }
         ret = avcodec_send_packet(codec_ctx_, packet);
+        // I unref before checking ret on purpose: send_packet does not
+        // take ownership of the packet, so success or failure the buffer
+        // is still mine to release, and the next av_read_frame reuses it.
         av_packet_unref(packet);
         if (ret < 0) {
             error = "decode error: " + av_error(ret);
@@ -289,8 +339,14 @@ int VideoPlayer::play(int cols, int rows, RenderMode mode, int max_frames,
         }
     }
 
+    // This restore line is the whole reason the signal handler only sets
+    // a flag: every exit from the loop above, error, flush, frame limit,
+    // or stop request, funnels through here with the cursor still hidden.
     std::printf("\033[0m\033[?25h\n");  // reset colors, show cursor
     std::fflush(stdout);
+    // I hand the old handlers back only after the restore is printed, so
+    // a second Ctrl+C during cleanup still cannot kill the process
+    // between hiding and showing the cursor.
     sigaction(SIGINT, &old_int, nullptr);
     sigaction(SIGTERM, &old_term, nullptr);
     cleanup();

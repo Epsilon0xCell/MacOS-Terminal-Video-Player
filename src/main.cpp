@@ -30,6 +30,11 @@ void usage(const char *argv0) {
 }
 
 bool parse_int(const char *s, int &value) {
+    // I check the end pointer as well as the range because strtol alone
+    // would accept "80x" as 80, and a size like that is a typo I want
+    // reported, not a width I silently guessed at. The upper bound keeps
+    // a huge --frames or --width value from asking play() for a frame
+    // buffer the terminal could never show anyway.
     char *end = nullptr;
     long v = std::strtol(s, &end, 10);
     if (end == s || *end != '\0' || v < 1 || v > 100000) return false;
@@ -58,6 +63,9 @@ int main(int argc, char **argv) {
             usage(argv[0]);
             return 0;
         } else if (!arg.empty() && arg[0] != '-' && path.empty()) {
+            // Only the first bare token is the file. A second one lands in
+            // the else below and fails as unknown, which I prefer to
+            // quietly playing the wrong file.
             path = arg;
         } else {
             std::fprintf(stderr, "Unknown argument: %s\n", arg.c_str());
@@ -71,12 +79,21 @@ int main(int argc, char **argv) {
     }
 
     if (cols == 0 || rows == 0) {
+        // I enter this block when either dimension is missing, but I only
+        // fill the ones still at zero, so a run like --width 120 keeps the
+        // width I was given and only asks the terminal for the height.
         // Ask the terminal; fall back to a sane default when not a TTY.
         struct winsize ws {};
         if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0) {
             if (cols == 0) cols = ws.ws_col;
+            // I give up the last row on purpose. Each rendered frame ends
+            // in a newline, and using every row would scroll the picture
+            // up one line on the final row of every frame.
             if (rows == 0) rows = ws.ws_row > 1 ? ws.ws_row - 1 : ws.ws_row;
         }
+        // When stdout is a pipe the ioctl fails and both stay zero. I fall
+        // back to 80x24 so a redirected run still renders at a fixed,
+        // repeatable size instead of refusing to play at all.
         if (cols == 0) cols = 80;
         if (rows == 0) rows = 24;
     }
