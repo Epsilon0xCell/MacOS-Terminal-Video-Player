@@ -1,6 +1,6 @@
 ![macos-terminal-video-high-quality](banner.png)
 
-# macos-terminal-video-high-quality
+# MacOS-Terminal-Video-Player
 
 Play video in the terminal at the highest quality the terminal allows:
 truecolor rendering with Unicode half blocks (two pixels per character
