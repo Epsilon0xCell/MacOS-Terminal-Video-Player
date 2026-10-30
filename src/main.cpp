@@ -6,8 +6,8 @@
 //   tvp <file> [--ascii] [--width COLS] [--height ROWS] [--frames N]
 //
 // Build (see README):
-//   g++ src/main.cpp src/video.cpp -Iinc/ -I/opt/homebrew/include \
-//       -std=c++17 -O3 -L/opt/homebrew/lib \
+//   g++ src/main.cpp src/video.cpp -Iinc/ -I/opt/homebrew/include
+//       -std=c++17 -O3 -L/opt/homebrew/lib
 //       -lavformat -lavcodec -lavutil -lswscale -o tvp
 
 #include <cstdio>

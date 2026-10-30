@@ -1,9 +1,21 @@
 #include "video.h"
 
 #include <chrono>
+#include <csignal>
 #include <cstdio>
 #include <cstring>
 #include <thread>
+
+namespace {
+
+// Set by the SIGINT/SIGTERM handler so play() can stop, restore the
+// terminal (cursor and colors), and return instead of the process dying
+// mid-frame with the cursor hidden.
+volatile std::sig_atomic_t g_stop_requested = 0;
+
+void request_stop(int) { g_stop_requested = 1; }
+
+}  // namespace
 
 namespace {
 
@@ -172,6 +184,16 @@ int VideoPlayer::play(int cols, int rows, RenderMode mode, int max_frames,
     std::printf("\033[?25l");  // hide cursor
     std::fflush(stdout);
 
+    // Stop cleanly on Ctrl+C or SIGTERM so the restore sequence below
+    // (colors reset, cursor shown) always runs.
+    g_stop_requested = 0;
+    struct sigaction sa {};
+    sa.sa_handler = request_stop;
+    sigemptyset(&sa.sa_mask);
+    struct sigaction old_int {}, old_term {};
+    sigaction(SIGINT, &sa, &old_int);
+    sigaction(SIGTERM, &sa, &old_term);
+
     int rendered = 0;
     bool done = false;
     bool flushed = false;
@@ -193,10 +215,23 @@ int VideoPlayer::play(int cols, int rows, RenderMode mode, int max_frames,
         auto now = std::chrono::steady_clock::now();
         double elapsed = std::chrono::duration<double>(now - t0).count();
         if (target_s > elapsed) {
-            std::this_thread::sleep_for(
-                std::chrono::duration<double>(target_s - elapsed));
+            // Sleep in short slices so a stop request interrupts pacing
+            // promptly instead of waiting out a long frame gap.
+            double remaining = target_s - elapsed;
+            while (remaining > 0 && !g_stop_requested) {
+                double slice = remaining < 0.01 ? remaining : 0.01;
+                std::this_thread::sleep_for(std::chrono::duration<double>(slice));
+                remaining -= slice;
+            }
         }
-        sws_scale_frame(sws_ctx_, scaled, f);
+        if (g_stop_requested) { done = true; return; }
+        int scale_ret = sws_scale_frame(sws_ctx_, scaled, f);
+        if (scale_ret < 0) {
+            error = "cannot scale frame: " + av_error(scale_ret);
+            rendered = -1;
+            done = true;
+            return;
+        }
         out.clear();
         if (mode == RenderMode::Color) render_color(scaled, px_w, px_h, out);
         else render_ascii(scaled, px_w, px_h, out);
@@ -256,6 +291,8 @@ int VideoPlayer::play(int cols, int rows, RenderMode mode, int max_frames,
 
     std::printf("\033[0m\033[?25h\n");  // reset colors, show cursor
     std::fflush(stdout);
+    sigaction(SIGINT, &old_int, nullptr);
+    sigaction(SIGTERM, &old_term, nullptr);
     cleanup();
     return rendered;
 }

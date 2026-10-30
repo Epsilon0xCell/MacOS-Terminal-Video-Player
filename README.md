@@ -1,3 +1,5 @@
+![macos-terminal-video-high-quality](banner.png)
+
 # macos-terminal-video-high-quality
 
 Play video in the terminal at the highest quality the terminal allows:
@@ -36,6 +38,8 @@ surface common to releases 6.x through 8.x.
   when output is not a TTY).
 - `--ascii` renders a grayscale ASCII ramp instead of truecolor blocks.
 - `--frames N` stops after N frames (useful for testing).
+- Pressing Ctrl+C (or sending SIGTERM) stops playback cleanly: the player
+  restores the cursor and resets colors before exiting.
 
 Examples:
 
