@@ -54,3 +54,18 @@ Examples:
 - `inc/video.h` - the VideoPlayer class interface
 - `src/video.cpp` - decoding, scaling, pacing, and terminal rendering
 - `src/main.cpp` - command line handling and terminal size detection
+
+## Tests
+
+test/run_tests.sh builds the player, generates a short test clip with
+the ffmpeg tool, and checks the behavior above end to end: both render
+modes, the frame limit, all frames rendered at end of file, playback
+paced to the timestamps, a clean Ctrl-C stop with the cursor restored,
+and the command line error exits (19 checks). It needs the same FFmpeg
+development files as the build itself. The include and library flags
+default to the Homebrew layout; the script header shows how to
+override them for other layouts.
+
+```
+bash test/run_tests.sh
+```
