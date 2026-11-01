@@ -1,6 +1,14 @@
-![macos-terminal-video-high-quality](banner.png)
+![Introduction banner](intro-banner.png)
 
 # MacOS-Terminal-Video-Player
+
+![macos-terminal-video-high-quality](banner.png)
+
+<img src="assets-scene.svg" alt="Animated themed scene" width="100%">
+
+> BUILD TICKET: Built on FFmpeg (libavformat / libavcodec / libswscale): any format and codec FFmpeg can read, the player can play. Audio tracks are ignored; the best video stream is selected automatically.
+
+> WINDOW NOTE: With no size options, the current terminal size is used (80x24 fallback when output is not a TTY).
 
 Play video in the terminal at the highest quality the terminal allows:
 truecolor rendering with Unicode half blocks (two pixels per character
@@ -17,6 +25,8 @@ best video stream is selected automatically.
 brew install ffmpeg
 ```
 
+<img src="sep-heavy.svg" alt="" width="100%">
+
 ## Compile Command
 
 ```
@@ -27,6 +37,8 @@ On Linux, point `-I` / `-L` at your FFmpeg development headers and
 libraries instead (packages: libavformat-dev, libavcodec-dev,
 libavutil-dev, libswscale-dev). The code uses the stable FFmpeg API
 surface common to releases 6.x through 8.x.
+
+<img src="sep-heavy.svg" alt="" width="100%">
 
 ## Usage
 
@@ -49,11 +61,15 @@ Examples:
 ./tvp trailer.webm --width 120 --height 40
 ```
 
+<img src="sep-heavy.svg" alt="" width="100%">
+
 ## Layout
 
 - `inc/video.h` - the VideoPlayer class interface
 - `src/video.cpp` - decoding, scaling, pacing, and terminal rendering
 - `src/main.cpp` - command line handling and terminal size detection
+
+<img src="sep-heavy.svg" alt="" width="100%">
 
 ## Tests
 

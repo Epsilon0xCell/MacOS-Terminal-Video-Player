@@ -1,149 +1,75 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MacOS Terminal Video Player: what it is, how it runs, where it stops</title>
-<meta name="description" content="MacOS Terminal Video Player is one of my projects. The README in the repo is short, so this page sticks to what the files themselves show.">
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MacOS-Terminal-Video-Player: the latke line</title>
+<meta name="description" content="Play video in the terminal: truecolor Unicode half blocks, paced to the video's own timestamps, built on FFmpeg.">
 <style>
-:root {
-  --bg: #e8dec4; --panel: #f4ecd6; --ink: #183636;
-  --mut: #ffffff;
-  --acc: #147a72; --acc2: #c65434;
-  --line: #f4ecd6;
-}
-* { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--ink);
-  font-family: Verdana, Geneva, sans-serif; line-height: 1.55; }
-code, pre, .mono { font-family: 'Lucida Console', monospace; }
-a { color: var(--acc2); }
-.hero { padding: 3rem 6vw 1rem; }
-.hero img.banner { width: 100%; height: auto; border: 1px solid var(--line);
-  border-radius: 10px; }
-.logo { width: 92px; height: 92px; border-radius: 18px;
-  border: 1px solid var(--line); }
-h1 { font-size: 2.4rem; margin: 0.4em 0 0.1em; }
-h2 { border-bottom: 2px solid var(--acc); padding-bottom: 0.2em;
-  margin-top: 2em; }
-.lede { font-size: 1.15rem; max-width: 62ch; }
-main { padding: 0 6vw 3rem; max-width: 1180px; margin: 0 auto; }
-.grid { display: grid; gap: 1rem;
-  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
-.card { background: var(--panel); border: 1px solid var(--line);
-  border-radius: 12px; padding: 1rem 1.2rem; }
-.card.pop { animation: rise 0.7s ease both; }
-@keyframes rise { from { opacity: 0; transform: translateY(14px); }
-  to { opacity: 1; transform: none; } }
-pre.code { background: #101014; color: #e8e6df; padding: 1rem 1.2rem;
-  border-radius: 12px; overflow-x: auto; font-size: 0.86rem;
-  border-left: 5px solid var(--acc); }
-table { border-collapse: collapse; width: 100%; }
-td, th { border-bottom: 1px solid var(--line); padding: 0.45rem 0.6rem;
-  text-align: left; }
-.shots { display: grid; gap: 1rem;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
-.shots img { width: 100%; height: auto; border: 1px solid var(--line);
-  border-radius: 10px; background: #f4f1e8; }
-footer { padding: 2rem 6vw; border-top: 1px solid var(--line);
-  color: var(--mut); }
-.rail { display: flex; gap: 1.2rem; align-items: flex-start; }
-.rail nav { position: sticky; top: 1rem; min-width: 180px; }
-@media (max-width: 760px) { .rail { flex-direction: column; }
-  .rail nav { position: static; } }
-@media (prefers-reduced-motion: reduce) {
-  .card.pop { animation: none; } * { scroll-behavior: auto; } }
-</style>
-</head>
-<body class="layout-grid">
-<!-- This page exists for MacOS-Terminal-Video-Player alone: the layout (console-grid),
-     the colors, and the type were picked for this project, not
-     shared with the other project pages. The code block below is
-     copied from the file it names, line for line. If it looks
-     plain, that is because the project is plain, and I would
-     rather the page match the project than dress it up. The one
-     thing I will not do here is oversell: what this project does
-     not do is stated on the page, not hidden from it. -->
-<header class="hero">
-  <img class="logo" src="assets/logo.png" alt="MacOS Terminal Video Player logo">
-  <img class="banner" src="assets/banner.png" alt="">
-  <h1>MacOS Terminal Video Player</h1>
-  <p class="mono"><a href="https://github.com/Epsilon0xCell/MacOS-Terminal-Video-Player">github.com/Epsilon0xCell/MacOS-Terminal-Video-Player</a></p>
-</header>
-
+@font-face { font-family: Barlow; src: url(fonts/Barlow-Regular.ttf); }
+@font-face { font-family: Barlow; src: url(fonts/Barlow-SemiBold.ttf); font-weight: 600; }
+:root { --iron:#121010; --gold:#d89e34; --white:#fbf9f4; --blue:#1e3a82; --ink:#181512; }
+* { box-sizing: border-box; } body { margin: 0; font-family: Barlow, sans-serif; background: var(--white); color: var(--ink); line-height: 1.6; }
+.topstrip { background: var(--iron); color: var(--white); padding: 1.6rem 5vw 1.2rem; border-bottom: 4px solid var(--gold); }
+.topstrip img.banner { width: 100%; height: auto; } .topstrip img.logo { width: 80px; height: 80px; }
+.topstrip h1 { letter-spacing: 0.14em; text-transform: uppercase; font-weight: 600; margin: 0.5rem 0 0.2rem; }
+main { max-width: 940px; margin: 0 auto; padding: 1rem 5vw 3rem; }
+.tray { background: #e9e7e2; border: 2px solid var(--iron); padding: 1.2rem 1.5rem; margin: 2rem 0; position: relative; }
+.tray::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 12px; background: linear-gradient(rgba(255,255,255,0.75), rgba(255,255,255,0)); }
+.tray h2 { letter-spacing: 0.14em; text-transform: uppercase; font-weight: 600; display: inline-block; border-bottom: 3px solid var(--gold); padding-bottom: 0.15rem; }
+pre.code { background: var(--iron); color: #f2f0ea; padding: 1rem; overflow-x: auto; font-size: 0.85rem; border-left: 6px solid var(--blue); }
+.spatula { display: inline-block; background: #3a3c3e; color: #fff; text-transform: uppercase; letter-spacing: 0.1em; padding: 0.55rem 2.2rem 0.55rem 1rem; text-decoration: none; position: relative; margin: 0.25rem; transition: transform 0.12s; }
+.spatula::after { content: ""; position: absolute; right: 0; top: 22%; width: 14px; height: 56%; background: var(--iron); }
+.spatula:hover { transform: rotate(-2deg); box-shadow: inset 0 -4px 0 var(--gold); }
+.spatula:active { transform: rotate(0); box-shadow: inset 0 -22px 0 rgba(216,158,52,0.55); }
+a { color: var(--blue); } .dreidel { display: inline-block; width: 11px; height: 11px; border: 2px solid #8a8a8a; margin-right: 0.4rem; position: relative; }
+a:hover .dreidel { border-color: var(--blue); transform: rotate(90deg); }
+.rack { border: 0; height: 22px; background: repeating-linear-gradient(90deg, var(--gold) 0 3px, transparent 3px 26px), var(--iron); position: relative; margin: 2.4rem 0; }
+.rack::after { content: ""; position: absolute; left: 0; right: 0; top: 10px; border-top: 2px solid var(--gold); transform: rotate(-0.6deg); }
+.diagram { background: #fff; border: 2px solid var(--iron); padding: 1rem; text-align: center; }
+footer { background: var(--iron); color: var(--white); padding: 1.4rem 5vw; }
+footer .coins { height: 14px; background: repeating-linear-gradient(90deg, var(--gold) 0 22px, transparent 22px 34px); margin-bottom: 1rem; }
+.shots { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); } .shots img { width: 100%; height: auto; }
+</style></head><body>
+<header class="topstrip"><img class="logo" src="assets/logo.png" alt="MacOS-Terminal-Video-Player logo"><img class="banner" src="assets/banner.png" alt="">
+<h1>MacOS-Terminal-Video-Player</h1>
+<p>Play video in the terminal at the highest quality the terminal allows: truecolor rendering with Unicode half blocks (two pixels per character cell), correctly paced to the video's own timestamps. An ASCII mode is included for monochrome terminals.</p>
+<nav aria-label="stations"><a class="spatula" href="#grater">The Grater</a><a class="spatula" href="#squeeze">The Squeeze</a><a class="spatula" href="#fry">The Fry</a><a class="spatula" href="#clock">The Clock</a><a class="spatula" href="#rack">The Rack</a><a class="spatula" href="https://github.com/Epsilon0xCell/MacOS-Terminal-Video-Player">The Repo</a></nav></header>
 <main>
-  <section class="rail">
-    <nav aria-label="on this page">
-      <p class="mono"><a href="#run">Run it</a><br>
-      <a href="#files">The files</a><br>
-      <a href="#sheets">The sheets</a><br>
-      <a href="https://github.com/Epsilon0xCell/MacOS-Terminal-Video-Player">The repo</a></p>
-    </nav>
-    <div>
-      <p class="lede">MacOS Terminal Video Player is one of my projects. The README in the repo is short, so this page sticks to what the files themselves show.</p>
-      <div class="grid">
-        <div class="card pop"><h3>What it is</h3>
-          <p>MacOS Terminal Video Player: 1 files, 9 counted
-          lines across Markdown 9. One job, done in the
-          open, in files you can read.</p></div>
-        <div class="card pop"><h3>The biggest piece</h3>
-          <p><code>README.md</code> carries the most
-          lines. If the project grows, that file is where the growth
-          lands first, for better or worse.</p></div>
-        <div class="card pop"><h3>The honest gap</h3>
-          <p>No test files yet. That is the honest gap, and the roadmap in the visuals folder says what the first one should cover.</p></div>
-      </div>
-      <section id="run">
-        <h2>Run it</h2>
-        <p>The repo README has the exact commands for this one. The
-        shape is the shape for most of my projects: clone it, read the
-        top file first so you know what will happen, then run it on
-        something you do not mind breaking.</p>
-        <p class="mono">$ git clone https://github.com/Epsilon0xCell/MacOS-Terminal-Video-Player.git<br>$ cd MacOS-Terminal-Video-Player</p>
-      </section>
-      
-  <section aria-label="real code">
-    <h2>The code, as it sits in the repo</h2>
-    <p>From <code>README.md</code>, line 1 on. I did
-    not tidy it for the page. What you see is what the file has.</p>
-    <pre class="code"><code># macos-terminal-video-high-quality
-
-brew install ffmpeg
-
-
-# Compile Command
-```
-g++ src/main.cpp src/video.cpp -Iinc/ -I/opt/homebrew/include -std=c++17 -O3 -L/opt/homebrew/lib -lavformat -lavcodec -lavutil -lswscale -o tvp
-```</code></pre>
-  </section>
-      <section id="files">
-        <h2>The files that matter</h2>
-        <table><tr><th>File</th><th>Lines</th></tr>
-        <tr><td><code>README.md</code></td><td>9</td></tr>
-        </table>
-        <p>Names doing the work: <span class="mono">no named functions in the snapshot</span>.</p>
-      </section>
-      <section id="sheets">
-        <h2>Drawn by hand</h2>
-        <p>I sketch my projects on notebook paper so I have to
-        understand them well enough to draw them. The full set,
-        with the counts and how they were counted, is the
-        <a href="https://github.com/Epsilon0xCell/MacOS-Terminal-Video-Player/tree/main/MacOS-Terminal-Video-Player-Visuals">MacOS-Terminal-Video-Player-Visuals</a>
-        folder in the repo. Nothing is drawn over the binder holes.
-        That is a rule, not a style.</p>
-        <div class="shots">
-          <img src="assets/architecture.png" alt="Hand drawn architecture sheet for MacOS Terminal Video Player">
-          <img src="assets/flowchart.png" alt="Hand drawn flowchart sheet for MacOS Terminal Video Player">
-          <img src="assets/product-map.png" alt="Hand drawn product map sheet for MacOS Terminal Video Player">
-        </div>
-      </section>
-    </div>
-  </section>
+<section class="tray" id="grater"><h2>The Grater: Input</h2>
+<p>Built on FFmpeg (libavformat / libavcodec / libswscale): any format and codec FFmpeg can read, the player can play. Audio tracks are ignored; the best video stream is selected automatically.</p>
+<pre class="code"><code>brew install ffmpeg</code></pre></section>
+<hr class="rack">
+<section class="tray" id="squeeze"><h2>The Squeeze: Decoding and Scaling</h2>
+<p><code>src/video.cpp</code> holds decoding, scaling, pacing, and terminal rendering. <code>inc/video.h</code> holds the VideoPlayer class interface, and <code>src/main.cpp</code> holds command line handling and terminal size detection. With no size options, the current terminal size is used (80x24 fallback when output is not a TTY).</p>
+<pre class="code"><code>./tvp &lt;file&gt; [--ascii] [--width COLS] [--height ROWS] [--frames N]</code></pre>
+<ul>
+<li><code>--ascii</code> renders a grayscale ASCII ramp instead of truecolor blocks.</li>
+<li><code>--frames N</code> stops after N frames (useful for testing).</li>
+<li>Pressing Ctrl+C (or sending SIGTERM) stops playback cleanly: the player restores the cursor and resets colors before exiting.</li>
+</ul></section>
+<hr class="rack">
+<section class="tray" id="fry"><h2>The Fry: Half Blocks</h2>
+<p>Truecolor Unicode half blocks pack two vertical pixels into one terminal cell: the upper pixel sets one colour, the lower pixel sets the other, and the cell shows both at once. Two stacked film pixels go in; one character cell comes out.</p>
+<div class="diagram"><svg viewBox="0 0 640 220" width="100%" role="img" aria-label="Diagram: two stacked pixels become one half block cell">
+<rect x="60" y="30" width="90" height="70" fill="#d89e34"/><rect x="60" y="110" width="90" height="70" fill="#1e3a82"/>
+<text x="105" y="200" text-anchor="middle" font-size="15">two stacked pixels</text>
+<line x1="170" y1="105" x2="270" y2="105" stroke="#181512" stroke-width="4"/><polygon points="270,96 292,105 270,114" fill="#181512"/>
+<rect x="330" y="30" width="130" height="150" fill="#d89e34"/><rect x="330" y="105" width="130" height="75" fill="#1e3a82"/>
+<text x="395" y="200" text-anchor="middle" font-size="15">one character cell</text>
+<text x="540" y="95" font-size="15">upper half:</text><text x="540" y="118" font-size="15">foreground colour</text>
+<text x="540" y="148" font-size="15">lower half:</text><text x="540" y="171" font-size="15">background colour</text></svg></div>
+<pre class="code"><code>./tvp movie.mp4
+./tvp clip.mkv --ascii
+./tvp trailer.webm --width 120 --height 40</code></pre></section>
+<hr class="rack">
+<section class="tray" id="clock"><h2>The Clock on the Wall: Pacing</h2>
+<p>Frames are shown against the video's own timestamps rather than as fast as the machine can push them. The test suite checks playback paced to the timestamps as one of its named behaviours.</p></section>
+<hr class="rack">
+<section class="tray" id="rack"><h2>The Rack: Build Notes</h2>
+<pre class="code"><code>g++ src/main.cpp src/video.cpp -Iinc/ -I/opt/homebrew/include -std=c++17 -O3 -L/opt/homebrew/lib -lavformat -lavcodec -lavutil -lswscale -o tvp</code></pre>
+<p>On Linux, point <code>-I</code> / <code>-L</code> at your FFmpeg development headers and libraries instead (packages: libavformat-dev, libavcodec-dev, libavutil-dev, libswscale-dev). The code uses the stable FFmpeg API surface common to releases 6.x through 8.x.</p>
+<p>Tests: <code>test/run_tests.sh</code> builds the player, generates a short test clip with the ffmpeg tool, and checks the behaviour end to end: both render modes, the frame limit, all frames rendered at end of file, playback paced to the timestamps, a clean Ctrl-C stop with the cursor restored, and the command line error exits (19 checks).</p>
+<pre class="code"><code>bash test/run_tests.sh</code></pre>
+<p>Resizing the terminal changes the grid the frame is squeezed into; start the player at the window size you mean to watch at. The full sheet set is the <a href="https://github.com/Epsilon0xCell/MacOS-Terminal-Video-Player/tree/main/MacOS-Terminal-Video-Player-Visuals"><span class="dreidel"></span>MacOS-Terminal-Video-Player-Visuals</a> folder in the repo.</p>
+<div class="shots"><img src="assets/architecture.png" alt="Hand drawn architecture sheet for MacOS Terminal Video Player"><img src="assets/flowchart.png" alt="Hand drawn flowchart sheet for MacOS Terminal Video Player"><img src="assets/product-map.png" alt="Hand drawn product map sheet for MacOS Terminal Video Player"></div></section>
 </main>
-<footer>
-  <p>MacOS Terminal Video Player is one of my projects. This page was written
-  from the repo itself on 2026-10-30: the counts are the
-  repo's counts, the code is the repo's code, and the gaps are the
-  repo's gaps.</p>
-</footer>
-</body>
-</html>
+<footer><div class="coins"></div><p>MacOS-Terminal-Video-Player is one of my projects. Licence: MIT (see the LICENSE file in the repo). Source: <a href="https://github.com/Epsilon0xCell/MacOS-Terminal-Video-Player" style="color:#d89e34">github.com/Epsilon0xCell/MacOS-Terminal-Video-Player</a>.</p></footer>
+</body></html>
